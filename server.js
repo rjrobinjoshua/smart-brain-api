@@ -14,10 +14,6 @@ const db = knex({
     }
 });
 
-db.select('*').from('users').then(data => {
-    console.log(data);
-});
-
 const app = express();
 
 const database = {
@@ -50,11 +46,20 @@ app.get('/', (req, res) => {
 
 app.post('/signin', (req, res) => {
 
-    if (req.body.email === database.users[0].email &&
-        req.body.password === database.users[0].password)
-        res.json(database.users[0]);
-    else
-        res.status(400).json("error logging in");
+    const {email, password} = req.body;
+
+    findLogin(email).then(login => {
+        let isValid = false;
+        if(login.length > 0){
+            isValid = bcrypt.compareSync(password, login[0].hash);
+            if(isValid)
+                findUser(email).then(users => sendUser(users, res));
+        }
+
+        if(!isValid)
+            res.status(400).json("Invalid credentials");
+
+    })
 
 });
 
@@ -69,8 +74,28 @@ app.post('/register', (req, res) => {
         joined: new Date()   
     }
 
-    insertUser(user)
-        .then(users => sendUser(users, res, "unable to register"));
+    const hashPass = bcrypt.hashSync(password);
+
+    
+    
+    db.transaction(trx => {
+
+        trx.insert({
+            hash: hashPass,
+            email: email
+        }).into('login')
+        .returning('email')
+        .then(async loginEmail => {
+            user.email = loginEmail[0];
+            await insertUser(user, trx)
+                .then(users => 
+                    sendUser(users, res, "unable to register"));
+        })
+        .then(trx.commit)
+        .catch(trx.rollback);
+
+    })
+
 
 });
 
@@ -130,6 +155,26 @@ findUser = (id) => {
         });
 }
 
+findUser = (email) => {
+
+    return db.select('*').from('users').where({email}).then(users => {
+            return users;
+        }).catch(err => {
+            console.log('Select error -> ',err);
+            return [];
+        });
+}
+
+findLogin = (email) => {
+
+    return db.select('*').from('login').where({email}).then(login => {
+            return login;
+        }).catch(err => {
+            console.log('Select error -> ',err);
+            return [];
+        });
+}
+
 updateUser = (user, id) => {
 
     return db('users').where({id}).update(user)
@@ -145,6 +190,17 @@ updateUser = (user, id) => {
 insertUser = (user) => {
 
     return db('users').returning('*')
+            .insert(user).then(users => {
+                return users;
+            }).catch(err => {
+                console.log('Insert error -> ',err);
+                return [];
+            });
+}
+
+insertUser = (user, trx) => {
+
+    return trx('users').returning('*')
             .insert(user).then(users => {
                 return users;
             }).catch(err => {
