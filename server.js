@@ -2,58 +2,40 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt-nodejs');
 const cors = require('cors');
-const knex = require('knex');
+const env = require('./config/env');
+const { db } = require('./config/db');
+const { clarifaiApp } = require('./config/clarifai');
 
-const db = knex({
-    client: 'pg',
-    connection: {
-      host : '127.0.0.1',
-      user : 'smartbrain',
-      password : 'smartbrain123',
-      database : 'smart-brain'
-    }
-});
 
 const app = express();
-
-const database = {
-    users: [
-        {
-            id: '123',
-            name: 'Robin',
-            email: 'robinjoshua@gmail.com',
-            password: 'cookies',
-            entries: 0,
-            joined: new Date()
-        },
-        {
-            id: '456',
-            name: 'Evan',
-            email: 'evanjoshua@gmail.com',
-            password: 'honey',
-            entries: 0,
-            joined: new Date()
-        }
-    ]
-}
 
 app.use(bodyParser.json());
 app.use(cors());
 
-app.get('/', (req, res) => {
-    res.json(database.users);
-});
+app.post('/image', (req, res) => {
+    clarifaiApp.models
+    .predict(Clarifai.FACE_DETECT_MODEL, req.body.url)
+    .then(data => res.json(data))
+    .catch(err => { 
+        console.log(err);
+        res.status(400).json("Unable to work with API");
+    });
+})
+
 
 app.post('/signin', (req, res) => {
 
     const {email, password} = req.body;
+
+    if(!email || !password )
+        return res.status(400).json('incorrect form submission');
 
     findLogin(email).then(login => {
         let isValid = false;
         if(login.length > 0){
             isValid = bcrypt.compareSync(password, login[0].hash);
             if(isValid)
-                findUser(email).then(users => sendUser(users, res));
+                findUserByEmail(email).then(users => sendUser(users, res));
         }
 
         if(!isValid)
@@ -66,6 +48,9 @@ app.post('/signin', (req, res) => {
 app.post('/register', (req, res) => {
 
     const { email, name, password } = req.body;
+
+    if(!email || !name || !password )
+        return res.status(400).json('incorrect form submission');
     
     const user = {
         name: name,
@@ -104,7 +89,7 @@ app.get('/profile/:id', (req,res) => {
 
     const { id } = req.params;
 
-    findUser(id).then(users => sendUser(users, res));
+    findUserById(id).then(users => sendUser(users, res));
 
 });
 
@@ -112,7 +97,7 @@ app.put('/image', (req, res) => {
 
     const { id } = req.body;
 
-    findUser(id).then(users => {
+    findUserById(id).then(users => {
         if(users.length > 0){
             users[0].entries++;
             updateUser(users[0], id);
@@ -145,7 +130,7 @@ sendUser = (users, res, msg) => {
     else
         res.status(404).json(msg);
 }
-findUser = (id) => {
+findUserById = (id) => {
 
     return db.select('*').from('users').where({id}).then(users => {
             return users;
@@ -155,7 +140,7 @@ findUser = (id) => {
         });
 }
 
-findUser = (email) => {
+findUserByEmail = (email) => {
 
     return db.select('*').from('users').where({email}).then(users => {
             return users;
@@ -166,7 +151,6 @@ findUser = (email) => {
 }
 
 findLogin = (email) => {
-
     return db.select('*').from('login').where({email}).then(login => {
             return login;
         }).catch(err => {
@@ -209,6 +193,10 @@ insertUser = (user, trx) => {
             });
 }
 
-app.listen(3000, () => {
-    console.log('app is running at 3000');
+app.listen(env.port, () => {
+    console.log(`
+    ################################################
+    🛡️  Server listening on port: ${env.port} 🛡️ 
+    ################################################
+  `)
 })
