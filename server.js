@@ -1,197 +1,28 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const bcrypt = require('bcrypt-nodejs');
 const cors = require('cors');
 const env = require('./config/env');
-const { db } = require('./config/db');
-const { clarifaiApp } = require('./config/clarifai');
+const authController = require('./controllers/auth');
+const userController = require('./controllers/user');
+const clarifaiController = require('./controllers/clarifai');
 
 
 const app = express();
 
+// middlewares
 app.use(bodyParser.json());
 app.use(cors());
 
-app.post('/image', (req, res) => {
-    clarifaiApp.models
-    .predict(Clarifai.FACE_DETECT_MODEL, req.body.url)
-    .then(data => res.json(data))
-    .catch(err => { 
-        console.log(err);
-        res.status(400).json("Unable to work with API");
-    });
-})
+// auth API
+app.post('/signin', authController.signIn);
+app.post('/register', authController.register);
 
+// user API
+app.get('/user/:id', userController.findUser);
+app.put('/user/entries', userController.updateEntries)
 
-app.post('/signin', (req, res) => {
-
-    const {email, password} = req.body;
-
-    if(!email || !password )
-        return res.status(400).json('incorrect form submission');
-
-    findLogin(email).then(login => {
-        let isValid = false;
-        if(login.length > 0){
-            isValid = bcrypt.compareSync(password, login[0].hash);
-            if(isValid)
-                findUserByEmail(email).then(users => sendUser(users, res));
-        }
-
-        if(!isValid)
-            res.status(400).json("Invalid credentials");
-
-    })
-
-});
-
-app.post('/register', (req, res) => {
-
-    const { email, name, password } = req.body;
-
-    if(!email || !name || !password )
-        return res.status(400).json('incorrect form submission');
-    
-    const user = {
-        name: name,
-        email: email,
-        entries: 0,
-        joined: new Date()   
-    }
-
-    const hashPass = bcrypt.hashSync(password);
-
-    
-    
-    db.transaction(trx => {
-
-        trx.insert({
-            hash: hashPass,
-            email: email
-        }).into('login')
-        .returning('email')
-        .then(async loginEmail => {
-            user.email = loginEmail[0];
-            await insertUser(user, trx)
-                .then(users => 
-                    sendUser(users, res, "unable to register"));
-        })
-        .then(trx.commit)
-        .catch(trx.rollback);
-
-    })
-
-
-});
-
-
-app.get('/profile/:id', (req,res) => {
-
-    const { id } = req.params;
-
-    findUserById(id).then(users => sendUser(users, res));
-
-});
-
-app.put('/image', (req, res) => {
-
-    const { id } = req.body;
-
-    findUserById(id).then(users => {
-        if(users.length > 0){
-            users[0].entries++;
-            updateUser(users[0], id);
-        }
-        sendUser(users, res);
-    });
-})
-
-// Load hash from your password DB.
-// bcrypt.compare("bacon", hash, function(err, res) {
-//     // res == true
-// });
-// bcrypt.compare("veggies", hash, function(err, res) {
-//     // res = false
-// });
-// bcrypt.hash(password, null, null, function(err, hash) {
-//     console.log(hash);
-// });
-
-sendUser = (users, res) => {
-    if(users.length > 0)
-        res.json(users[0]);
-    else
-        res.status(404).json("No such user");
-}
-
-sendUser = (users, res, msg) => {
-    if(users.length > 0)
-        res.json(users[0]);
-    else
-        res.status(404).json(msg);
-}
-findUserById = (id) => {
-
-    return db.select('*').from('users').where({id}).then(users => {
-            return users;
-        }).catch(err => {
-            console.log('Select error -> ',err);
-            return [];
-        });
-}
-
-findUserByEmail = (email) => {
-
-    return db.select('*').from('users').where({email}).then(users => {
-            return users;
-        }).catch(err => {
-            console.log('Select error -> ',err);
-            return [];
-        });
-}
-
-findLogin = (email) => {
-    return db.select('*').from('login').where({email}).then(login => {
-            return login;
-        }).catch(err => {
-            console.log('Select error -> ',err);
-            return [];
-        });
-}
-
-updateUser = (user, id) => {
-
-    return db('users').where({id}).update(user)
-            .then(count => {
-                console.log('updatedCount -> ' ,count);
-                return count;
-            }).catch(err => {
-                console.log('Update error -> ',err);
-                return 0;
-            });
-}
-
-insertUser = (user) => {
-
-    return db('users').returning('*')
-            .insert(user).then(users => {
-                return users;
-            }).catch(err => {
-                console.log('Insert error -> ',err);
-                return [];
-            });
-}
-
-insertUser = (user, trx) => {
-
-    return trx('users').returning('*')
-            .insert(user).then(users => {
-                return users;
-            }).catch(err => {
-                console.log('Insert error -> ',err);
-                return [];
-            });
-}
+// image API
+app.post('/image', clarifaiController.predictImage);
 
 app.listen(env.port, () => {
     console.log(`
