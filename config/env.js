@@ -17,7 +17,7 @@ module.exports = {
     port: parseInt(process.env.PORT, 10),
     db: {
         client: process.env.DB_CLIENT,
-        connectionUrl: process.env.CONNECTION_URL,
+        connectionUrl: process.env.DATABASE_URL,
         ssl: (process.env.DB_SSL === "true")
     },
     clarifai: {
