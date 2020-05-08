@@ -16,11 +16,9 @@ if(process.env.NODE_ENV !== 'production') {
 module.exports = {
     port: parseInt(process.env.PORT, 10),
     db: {
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        name: process.env.DB_NAME,
-        client: process.env.DB_CLIENT
+        client: process.env.DB_CLIENT,
+        connectionUrl: process.env.CONNECTION_URL,
+        ssl: (process.env.DB_SSL === "true")
     },
     clarifai: {
         apikey: process.env.CLARIFAI_API_KEY
