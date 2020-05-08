@@ -3,11 +3,14 @@ const dotenv = require('dotenv');
 // Set the NODE_ENV to 'development' by default
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
-const envFound = dotenv.config();
-if (envFound.error) {
-  // This error should crash whole process
+// do this validation only in development env
+if(process.env.NODE_ENV !== 'production') {
+    const envFound = dotenv.config();
+    if (envFound.error) {
+    // This error should crash whole process
 
-  throw new Error("⚠️  Couldn't find .env file  ⚠️");
+    throw new Error("⚠️  Couldn't find .env file  ⚠️");
+    }
 }
 
 module.exports = {
