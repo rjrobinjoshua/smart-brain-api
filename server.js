@@ -13,6 +13,8 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
+
+app.get('/', (req, res) => res.send('<h1>Welcome to Smart-brain API</h1>'));
 // auth API
 app.post('/signin', authController.signIn);
 app.post('/register', authController.register);
