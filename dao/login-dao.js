@@ -22,7 +22,12 @@ insertLogin = (login, trx) => {
             });
 }
 
+createTransaction = () => {
+    return db.transaction();
+}
+
 module.exports = {
     findLogin,
-    insertLogin
+    insertLogin,
+    createTransaction
 }

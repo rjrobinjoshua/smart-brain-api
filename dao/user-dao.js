@@ -1,8 +1,5 @@
 const { db } = require('../config/db');
 
-createTransaction = () => {
-    return db.transaction();
-}
 
 findUserById = (id) => {
 
@@ -48,7 +45,6 @@ insertUser = (user, trx) => {
 }
 
 module.exports = {
-    createTransaction,
     findUserById,
     findUserByEmail,
     updateUser,
