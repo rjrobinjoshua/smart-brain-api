@@ -6,14 +6,30 @@ const env = require('./config/env');
 const authController = require('./controllers/auth-controller');
 const userController = require('./controllers/user-controller');
 const clarifaiController = require('./controllers/clarifai-controller');
+const authService = require('./services/auth-service');
 
 
 const app = express();
 
+const myAsyncAuthorizer = (username, password, cb) => {
+  
+  console.log("username=> ", username);
+  console.log("password=> ", password);
+  authService.authenticate(username, password)
+      .then(result => { 
+        console.log(result);
+        return cb(null, result);
+      });
+}
+
 // middlewares
 app.use(bodyParser.json());
 app.use(cors());
-app.use(/\/((?!(signin|register)).)*/, basicAuth({ authorizer: myAuthorizer }))
+// bypass auth for login and register
+app.use(/\/((?!(signin|register)).)*/, basicAuth({ 
+        authorizer: myAsyncAuthorizer,
+        authorizeAsync: true,
+      }))
 
 app.get('/', (req, res) => res.send('<h1>Welcome to Smart-brain API</h1>'));
 // auth API
@@ -27,12 +43,7 @@ app.put('/user/entries', userController.updateEntries)
 // image API
 app.post('/image', clarifaiController.predictImage);
 
-function myAuthorizer(username, password) {
-  const userMatches = basicAuth.safeCompare(username, 'admin')
-  const passwordMatches = basicAuth.safeCompare(password, 'supersecret')
 
-  return userMatches & passwordMatches
-}
 
 app.listen(env.port, () => {
     console.log(`

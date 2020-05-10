@@ -37,9 +37,6 @@ insertUser = (user, trx) => {
     return trx('users').returning('*')
             .insert(user).then(users => {
                 return users;
-            }).catch(err => {
-                console.log('User insert error -> ',err);
-                throw err;
             });
 }
 
