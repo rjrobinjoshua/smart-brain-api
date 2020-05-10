@@ -17,8 +17,8 @@ insertLogin = (login, trx) => {
             .insert(login).then(login => {
                 return login;
             }).catch(err => {
-                console.log('Insert error -> ',err);
-                return [];
+                console.log('Login insert error -> ',err);
+                throw err;
             });
 }
 
