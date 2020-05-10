@@ -7,17 +7,17 @@ const authController = require('./controllers/auth-controller');
 const userController = require('./controllers/user-controller');
 const clarifaiController = require('./controllers/clarifai-controller');
 const authService = require('./services/auth-service');
+const rateLimit = require("express-rate-limit");
 
 
 const app = express();
 
-const myAsyncAuthorizer = (username, password, cb) => {
+const limiter = rateLimit({
+  windowMs: env.rateLimit.windowMs,
+  max: env.rateLimit.max,
+  onLimitReached: printLimitReachedReq
+});
 
-  authService.authenticate(username, password)
-      .then(result => { 
-        return cb(null, result);
-      });
-}
 
 // middlewares
 app.use(bodyParser.json());
@@ -27,7 +27,11 @@ app.use(/\/((?!(signin|register)).)*/, basicAuth({
         authorizer: myAsyncAuthorizer,
         authorizeAsync: true,
       }))
+// rate limiter
+app.use(limiter);
 
+
+//APIs
 app.get('/', (req, res) => res.send('<h1>Welcome to Smart-brain API</h1>'));
 // auth API
 app.post('/signin', authController.signIn);
@@ -35,12 +39,23 @@ app.post('/register', authController.register);
 
 // user API
 app.get('/user/:id', userController.findUser);
-app.put('/user/entries', userController.updateEntries)
+app.put('/user/entries', userController.updateEntries);
 
 // image API
 app.post('/image', clarifaiController.predictImage);
 
+function myAsyncAuthorizer(username, password, cb){
 
+  authService.authenticate(username, password)
+      .then(result => { 
+        return cb(null, result);
+      });
+}
+
+function printLimitReachedReq(req, res, options) {
+  console.log(req.ip +" crossed the current rate limit");
+  console.log(req.rateLimit);
+}
 
 app.listen(env.port, () => {
     console.log(`

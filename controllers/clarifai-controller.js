@@ -11,7 +11,7 @@ predictImage = (req, res) => {
     .predict(Clarifai.FACE_DETECT_MODEL, url)
     .then(data => res.json(data))
     .catch(err => { 
-        console.log(err);
+        console.log(err.message);
         res.status(400).json("Unable to work with API");
     });
 }

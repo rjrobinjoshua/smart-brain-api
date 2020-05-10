@@ -15,6 +15,10 @@ if(process.env.NODE_ENV !== 'production') {
 
 module.exports = {
     port: parseInt(process.env.PORT, 10),
+    rateLimit: {
+        windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10),
+        max: parseInt(process.env.RATE_LIMIT_MAX, 10)
+    },
     db: {
         client: process.env.DB_CLIENT,
         connectionUrl: process.env.DATABASE_URL,
