@@ -12,12 +12,9 @@ const authService = require('./services/auth-service');
 const app = express();
 
 const myAsyncAuthorizer = (username, password, cb) => {
-  
-  console.log("username=> ", username);
-  console.log("password=> ", password);
+
   authService.authenticate(username, password)
       .then(result => { 
-        console.log(result);
         return cb(null, result);
       });
 }
